@@ -2,9 +2,6 @@ param(
     [string]$NgrokToken
 )
 
-# Luego usas $NgrokToken en vez de poner el token fijo:
-.\ngrok.exe authtoken $NgrokToken
-
 # Cambiar al directorio Descargas para que los archivos queden ahí
 Set-Location $env:USERPROFILE\Downloads
 
@@ -26,6 +23,9 @@ Expand-Archive ngrok.zip -DestinationPath . -Force;
 
 # Borrar archivo zip descargado
 Remove-Item ngrok.zip;
+
+# ⚠️ Esperar un momento por si la extracción tarda
+Start-Sleep -Seconds 2
 
 # Configurar el token de autenticación de ngrok
 .\ngrok.exe authtoken $NgrokToken
