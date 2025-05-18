@@ -2,33 +2,40 @@ param(
     [string]$NgrokToken
 )
 
-# Cambiar al directorio Descargas para que los archivos queden ahí
+# Cambiar al directorio Descargas
 Set-Location $env:USERPROFILE\Downloads
 
-# Instalar OpenSSH Server
-Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0;
+# Verificar si OpenSSH Server está instalado
+$openssh = Get-WindowsCapability -Online | Where-Object { $_.Name -like "OpenSSH.Server*" }
+if ($openssh.State -ne "Installed") {
+    Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0
+}
 
-# Iniciar y configurar el servicio SSH para que arranque siempre
-Start-Service sshd;
-Set-Service -Name sshd -StartupType 'Automatic';
+# Iniciar y configurar el servicio sshd si no está corriendo
+if ((Get-Service sshd -ErrorAction SilentlyContinue).Status -ne 'Running') {
+    Start-Service sshd
+}
+Set-Service -Name sshd -StartupType Automatic
 
-# Abrir puerto 22 en el firewall para permitir conexiones SSH
-New-NetFirewallRule -Name sshd -DisplayName 'OpenSSH SSH Server' -Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort 22;
+# Crear regla de firewall solo si no existe
+if (-not (Get-NetFirewallRule -Name "sshd" -ErrorAction SilentlyContinue)) {
+    New-NetFirewallRule -Name sshd -DisplayName 'OpenSSH SSH Server' -Enabled True `
+        -Direction Inbound -Protocol TCP -Action Allow -LocalPort 22
+}
 
-# Descargar ngrok
-Invoke-WebRequest -Uri https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-windows-amd64.zip -OutFile ngrok.zip;
+# Descargar ngrok si no existe
+if (-not (Test-Path ".\ngrok.exe")) {
+    Write-Host "Descargando ngrok..."
+    Invoke-WebRequest -Uri "https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-windows-amd64.zip" -OutFile "ngrok.zip"
+    Expand-Archive ngrok.zip -DestinationPath . -Force
+    Remove-Item ngrok.zip
+}
 
-# Extraer ngrok
-Expand-Archive ngrok.zip -DestinationPath . -Force;
+# Autenticación de ngrok (solo si no está ya autenticado)
+$authFile = "$env:APPDATA\ngrok\ngrok.yml"
+if (-not (Test-Path $authFile) -or -not (Select-String -Path $authFile -Pattern $NgrokToken -Quiet)) {
+    .\ngrok.exe authtoken $NgrokToken
+}
 
-# Borrar archivo zip descargado
-Remove-Item ngrok.zip;
-
-# ⚠️ Esperar un momento por si la extracción tarda
-Start-Sleep -Seconds 2
-
-# Configurar el token de autenticación de ngrok
-.\ngrok.exe authtoken $NgrokToken
-
-# Ejecutar ngrok para abrir túnel TCP en el puerto 22
+# Ejecutar ngrok
 Start-Process -NoNewWindow -FilePath .\ngrok.exe -ArgumentList "tcp 22"
