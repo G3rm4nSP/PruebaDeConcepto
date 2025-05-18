@@ -26,7 +26,7 @@ if (-not (Get-NetFirewallRule -Name "sshd" -ErrorAction SilentlyContinue)) {
 # Descargar ngrok si no existe
 if (-not (Test-Path ".\ngrok.exe")) {
     Write-Host "Descargando ngrok..."
-    Invoke-WebRequest -Uri "https://bin.equinox.io/c/4VmDzA7iaHb/ngrok-stable-windows-amd64.zip" -OutFile "ngrok.zip"
+    Invoke-WebRequest -Uri "https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-windows-amd64.zip" -OutFile "ngrok.zip"
     Expand-Archive ngrok.zip -DestinationPath . -Force
     Remove-Item ngrok.zip
 }
